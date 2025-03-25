@@ -13,6 +13,14 @@ export class AuthService {
   ) {}
 
   async signUp(signUpDto: SignUpDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: signUpDto.email },
+    });
+
+    if (existingUser) {
+      throw new UnauthorizedException('Email already exists');
+    }
+
     const hashedPassword = await bcrypt.hash(signUpDto.password, 10);
 
     const user = await this.prisma.user.create({
@@ -22,15 +30,14 @@ export class AuthService {
       },
     });
 
-    const token = this.jwtService.sign({ userId: user.id });
-
     return {
+      message: 'User created successfully',
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: 'USER', // Default role
       },
-      token,
     };
   }
 
@@ -52,15 +59,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({ userId: user.id });
-
     return {
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: 'USER', // Default role
       },
-      token,
     };
   }
 

@@ -8,55 +8,81 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  password      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  skills        Skill[]
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String
+  password         String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  isActive         Boolean           @default(true)
+  skills           Skill[]
   sentRequests     ExchangeRequest[] @relation("SentRequests")
   receivedRequests ExchangeRequest[] @relation("ReceivedRequests")
+
+  @@index([email])
+  @@index([isActive])
 }
 
 model Skill {
   id          String    @id @default(cuid())
   title       String
   description String
-  category    String
+  categoryId  String
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  isActive    Boolean   @default(true)
+  category    Category  @relation(fields: [categoryId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([categoryId])
+  @@index([userId])
 }
 
 model ExchangeRequest {
-  id              String    @id @default(cuid())
-  fromUserId      String
-  toUserId        String
-  fromUser        User      @relation("SentRequests", fields: [fromUserId], references: [id])
-  toUser          User      @relation("ReceivedRequests", fields: [toUserId], references: [id])
-  offeredSkillId  String
+  id               String    @id @default(cuid())
+  fromUserId       String
+  toUserId         String
+  offeredSkillId   String
   requestedSkillId String
-  status          String    @default("pending") // pending, accepted, rejected
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status           String    @default("pending")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  isActive         Boolean   @default(true)
+  fromUser         User      @relation("SentRequests", fields: [fromUserId], references: [id])
+  toUser           User      @relation("ReceivedRequests", fields: [toUserId], references: [id])
+  exchange         Exchange?
+
+  @@index([status, isActive])
+  @@index([fromUserId])
+  @@index([toUserId])
 }
 
 model Category {
   id          String    @id @default(cuid())
   name        String    @unique
   description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  isActive    Boolean   @default(true)
   skills      Skill[]
 }
 
 // Example rating model
 model Exchange {
-  id              String    @id @default(cuid())
-  request         ExchangeRequest @relation(fields: [requestId], references: [id])
-  requestId       String    @unique
-  fromUserRating  Int?      @default(0)
-  toUserRating    Int?      @default(0)
-  feedback        String?
-  completedAt     DateTime  @default(now())
+  id             String          @id @default(cuid())
+  requestId      String          @unique
+  fromUserRating Int?            @default(0)
+  toUserRating   Int?            @default(0)
+  feedback       String?
+  completedAt    DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  isActive       Boolean         @default(true)
+  request        ExchangeRequest @relation(fields: [requestId], references: [id])
 }

@@ -12,6 +12,9 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe());
 
+  // Add global prefix for all routes
+  // app.setGlobalPrefix('api/v1');
+
   await app.listen(4000);
 }
 bootstrap();
