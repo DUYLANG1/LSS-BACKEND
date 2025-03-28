@@ -12,4 +12,5 @@ export class CreateSkillDto {
   @IsString()
   @IsNotEmpty()
   category: string;
+  userId: string; 
 }
