@@ -1,6 +1,7 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query } from '@nestjs/common';
 import { SkillsService } from './skills.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
+import { FindAllSkillsDto } from './dto/find-all-skills.dto';
 
 @Controller('skills')
 export class SkillsController {
@@ -9,5 +10,10 @@ export class SkillsController {
   @Post()
   create(@Body() createSkillDto: CreateSkillDto) {
     return this.skillsService.create(createSkillDto);
+  }
+
+  @Get()
+  findAll(@Query() query: FindAllSkillsDto) {
+    return this.skillsService.findAll(query);
   }
 }
