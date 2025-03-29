@@ -11,11 +11,25 @@ async function main() {
   }
 
   // User data
-  const user1 = await prisma.user.create({ data: { name: 'Alice', email: 'alice@example.com', password: 'password' } });
-  const user2 = await prisma.user.create({ data: { name: 'Bob', email: 'bob@example.com', password: 'password' } });
-  const user3 = await prisma.user.create({ data: { name: 'Charlie', email: 'charlie@example.com', password: 'password' } });
-  const user4 = await prisma.user.create({ data: { name: 'Diana', email: 'diana@example.com', password: 'password' } });
-  const user5 = await prisma.user.create({ data: { name: 'Eve', email: 'eve@example.com', password: 'password' } });
+  const user1 = await prisma.user.create({
+    data: { name: 'Alice', email: 'alice@example.com', password: 'password' },
+  });
+  const user2 = await prisma.user.create({
+    data: { name: 'Bob', email: 'bob@example.com', password: 'password' },
+  });
+  const user3 = await prisma.user.create({
+    data: {
+      name: 'Charlie',
+      email: 'charlie@example.com',
+      password: 'password',
+    },
+  });
+  const user4 = await prisma.user.create({
+    data: { name: 'Diana', email: 'diana@example.com', password: 'password' },
+  });
+  const user5 = await prisma.user.create({
+    data: { name: 'Eve', email: 'eve@example.com', password: 'password' },
+  });
 
   // Category data
   await prisma.category.createMany({
@@ -24,19 +38,45 @@ async function main() {
       { name: 'Design', description: 'Graphic and UI/UX design' },
       { name: 'Writing', description: 'Content creation and copywriting' },
       { name: 'Marketing', description: 'Digital marketing and advertising' },
-      { name: 'Photography', description: 'Photo editing and shooting' }
-    ]
+      { name: 'Photography', description: 'Photo editing and shooting' },
+    ],
   });
 
   // Skill data
   await prisma.skill.createMany({
     data: [
-      { title: 'JavaScript', categoryId: 1, description: 'A programming language for building web applications', userId: user1.id },
-      { title: 'React', categoryId: 2, description: 'A JavaScript library for building user interfaces', userId: user2.id },
-      { title: 'Figma', categoryId: 3, description: 'A vector graphics editor and prototyping tool', userId: user3.id },
-      { title: 'Copywriting', categoryId: 4, description: 'Creating engaging and effective copy for marketing and content', userId: user4.id },
-      { title: 'SEO', categoryId: 5, description: 'Optimizing websites for search engines', userId: user5.id }
-    ]
+      {
+        title: 'JavaScript',
+        categoryId: 1,
+        description: 'A programming language for building web applications',
+        userId: user1.id,
+      },
+      {
+        title: 'React',
+        categoryId: 2,
+        description: 'A JavaScript library for building user interfaces',
+        userId: user2.id,
+      },
+      {
+        title: 'Figma',
+        categoryId: 3,
+        description: 'A vector graphics editor and prototyping tool',
+        userId: user3.id,
+      },
+      {
+        title: 'Copywriting',
+        categoryId: 4,
+        description:
+          'Creating engaging and effective copy for marketing and content',
+        userId: user4.id,
+      },
+      {
+        title: 'SEO',
+        categoryId: 5,
+        description: 'Optimizing websites for search engines',
+        userId: user5.id,
+      },
+    ],
   });
 
   // Exchange data
@@ -44,70 +84,88 @@ async function main() {
     data: {
       fromUserId: user1.id,
       toUserId: user2.id,
-      offeredSkillId: (await prisma.skill.findFirst({ where: { title: 'JavaScript' } }))?.id || '1',
-      requestedSkillId: (await prisma.skill.findFirst({ where: { title: 'React' } }))?.id || '2'
-    }
+      offeredSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'JavaScript' } }))
+          ?.id || '1',
+      requestedSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'React' } }))?.id ||
+        '2',
+    },
   });
   await prisma.exchange.create({
     data: {
-      requestId: request1.id
-    }
+      requestId: request1.id,
+    },
   });
 
   const request2 = await prisma.exchangeRequest.create({
     data: {
       fromUserId: user2.id,
       toUserId: user3.id,
-      offeredSkillId: (await prisma.skill.findFirst({ where: { title: 'React' } }))?.id || '2',
-      requestedSkillId: (await prisma.skill.findFirst({ where: { title: 'Figma' } }))?.id || '3'
-    }
+      offeredSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'React' } }))?.id ||
+        '2',
+      requestedSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'Figma' } }))?.id ||
+        '3',
+    },
   });
   await prisma.exchange.create({
     data: {
-      requestId: request2.id
-    }
+      requestId: request2.id,
+    },
   });
 
   const request3 = await prisma.exchangeRequest.create({
     data: {
       fromUserId: user3.id,
       toUserId: user4.id,
-      offeredSkillId: (await prisma.skill.findFirst({ where: { title: 'Figma' } }))?.id || '3',
-      requestedSkillId: (await prisma.skill.findFirst({ where: { title: 'Copywriting' } }))?.id || '4'
-    }
+      offeredSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'Figma' } }))?.id ||
+        '3',
+      requestedSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'Copywriting' } }))
+          ?.id || '4',
+    },
   });
   await prisma.exchange.create({
     data: {
-      requestId: request3.id
-    }
+      requestId: request3.id,
+    },
   });
 
   const request4 = await prisma.exchangeRequest.create({
     data: {
       fromUserId: user4.id,
       toUserId: user5.id,
-      offeredSkillId: (await prisma.skill.findFirst({ where: { title: 'Copywriting' } }))?.id || '4',
-      requestedSkillId: (await prisma.skill.findFirst({ where: { title: 'SEO' } }))?.id || '5'
-    }
+      offeredSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'Copywriting' } }))
+          ?.id || '4',
+      requestedSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'SEO' } }))?.id || '5',
+    },
   });
   await prisma.exchange.create({
     data: {
-      requestId: request4.id
-    }
+      requestId: request4.id,
+    },
   });
 
   const request5 = await prisma.exchangeRequest.create({
     data: {
       fromUserId: user5.id,
       toUserId: user1.id,
-      offeredSkillId: (await prisma.skill.findFirst({ where: { title: 'SEO' } }))?.id || '5',
-      requestedSkillId: (await prisma.skill.findFirst({ where: { title: 'JavaScript' } }))?.id || '1'
-    }
+      offeredSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'SEO' } }))?.id || '5',
+      requestedSkillId:
+        (await prisma.skill.findFirst({ where: { title: 'JavaScript' } }))
+          ?.id || '1',
+    },
   });
   await prisma.exchange.create({
     data: {
-      requestId: request5.id
-    }
+      requestId: request5.id,
+    },
   });
 }
 

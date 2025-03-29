@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  Param,
+  NotFoundException,
+} from '@nestjs/common';
 import { SkillsService } from './skills.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { FindAllSkillsDto } from './dto/find-all-skills.dto';
@@ -15,5 +23,10 @@ export class SkillsController {
   @Get()
   findAll(@Query() query: FindAllSkillsDto) {
     return this.skillsService.findAll(query);
+  }
+
+  @Get(':id')
+  findById(@Param('id') id: string) {
+    return this.skillsService.findById(id);
   }
 }
