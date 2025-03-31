@@ -13,6 +13,7 @@ import { ExchangesService } from './exchanges.service';
 import { CreateExchangeRequestDto } from './dto/create-exchange.dto';
 import { UpdateExchangeStatusDto } from './dto/update-exchange-status.dto';
 import { CompleteExchangeDto } from './dto/complete-exchange.dto';
+import { RespondExchangeDto } from './dto/respond-exchange.dto';
 
 @Controller('exchanges')
 export class ExchangesController {
@@ -68,6 +69,22 @@ export class ExchangesController {
       id,
       completeExchangeDto.rating,
       completeExchangeDto.feedback,
+      userId,
+    );
+  }
+
+  @Post(':id/respond')
+  respondToExchange(
+    @Param('id') id: string,
+    @Body() respondExchangeDto: RespondExchangeDto,
+    @Query('userId') userId: string,
+  ) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
+    return this.exchangesService.updateStatus(
+      id,
+      respondExchangeDto.status,
       userId,
     );
   }

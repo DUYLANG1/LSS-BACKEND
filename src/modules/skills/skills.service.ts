@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { Prisma } from '@prisma/client';
 import { FindAllSkillsDto } from './dto/find-all-skills.dto';
+import { UpdateSkillDto } from './dto/update-skill.dto';
 
 @Injectable()
 export class SkillsService {
@@ -103,5 +104,51 @@ export class SkillsService {
     }
 
     return skill;
+  }
+
+  async update(id: string, updateSkillDto: UpdateSkillDto) {
+    const skill = await this.findById(id);
+    
+    const data: any = {};
+    
+    if (updateSkillDto.title) {
+      data.title = updateSkillDto.title;
+    }
+    
+    if (updateSkillDto.description) {
+      data.description = updateSkillDto.description;
+    }
+    
+    if (updateSkillDto.category) {
+      data.categoryId = parseInt(updateSkillDto.category);
+    }
+    
+    return this.prisma.skill.update({
+      where: { id },
+      data,
+      include: {
+        category: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  async remove(id: string) {
+    const skill = await this.findById(id);
+    
+    // Soft delete
+    return this.prisma.skill.update({
+      where: { id },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+      },
+    });
   }
 }
