@@ -33,8 +33,30 @@ export class SkillsService {
       ];
     }
 
-    if (query.categoryId) {
-      where.categoryId = parseInt(query.categoryId);
+    // Handle both categoryId and category parameters
+    const categoryFilter = query.categoryId || query.category;
+    if (categoryFilter) {
+      // Try to parse as integer first (for direct ID)
+      const categoryId = parseInt(categoryFilter);
+      
+      if (!isNaN(categoryId)) {
+        // If it's a valid number, use it directly
+        where.categoryId = categoryId;
+      } else {
+        // If it's not a number, try to find the category by name
+        const category = await this.prisma.category.findFirst({
+          where: {
+            name: {
+              contains: categoryFilter,
+              mode: 'insensitive',
+            },
+          },
+        });
+        
+        if (category) {
+          where.categoryId = category.id;
+        }
+      }
     }
 
     if (query.userId) {

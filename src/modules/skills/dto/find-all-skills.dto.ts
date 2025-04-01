@@ -12,6 +12,10 @@ export class FindAllSkillsDto {
 
   @IsOptional()
   @IsString()
+  category?: string; // Add support for 'category' parameter
+
+  @IsOptional()
+  @IsString()
   userId?: string;
 
   @IsOptional()
