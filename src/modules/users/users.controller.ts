@@ -4,6 +4,7 @@ import {
   Put,
   Body,
   Query,
+  Param,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -33,10 +34,15 @@ export class UsersController {
   }
 
   @Get('skills')
-  getUserSkills(@Query('userId') userId: string) {
+  getUserSkillsByQuery(@Query('userId') userId: string) {
     if (!userId) {
       throw new UnauthorizedException('User ID is required');
     }
+    return this.usersService.getUserSkills(userId);
+  }
+
+  @Get('skills/:userId')
+  getUserSkillsByParam(@Param('userId') userId: string) {
     return this.usersService.getUserSkills(userId);
   }
 }
