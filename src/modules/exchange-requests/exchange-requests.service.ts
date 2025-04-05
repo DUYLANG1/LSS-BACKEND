@@ -7,7 +7,10 @@ import { Prisma } from '@prisma/client';
 export class ExchangesService {
   constructor(private prisma: PrismaService) {}
 
-  async createRequest(createExchangeDto: CreateExchangeRequestDto, fromUserId: string) {
+  async createRequest(
+    createExchangeDto: CreateExchangeRequestDto,
+    fromUserId: string,
+  ) {
     return this.prisma.exchangeRequest.create({
       data: {
         fromUserId,
@@ -35,15 +38,28 @@ export class ExchangesService {
     });
   }
 
-  async findAll(userId: string, status?: string) {
+  async findAll(userId: string, status?: string, skillId?: string) {
     const where: Prisma.ExchangeRequestWhereInput = {
-      OR: [
-        { fromUserId: userId },
-        { toUserId: userId },
-      ],
       isActive: true,
       deletedAt: null,
     };
+
+    // User filter
+    const userFilter = [{ fromUserId: userId }, { toUserId: userId }];
+
+    // Skill filter if provided
+    if (skillId) {
+      where.AND = [
+        {
+          OR: userFilter,
+        },
+        {
+          OR: [{ offeredSkillId: skillId }, { requestedSkillId: skillId }],
+        },
+      ];
+    } else {
+      where.OR = userFilter;
+    }
 
     if (status) {
       where.status = status;
@@ -71,6 +87,99 @@ export class ExchangesService {
         createdAt: 'desc',
       },
     });
+  }
+
+  async findAllWithSkills(userId: string, status?: string, skillId?: string) {
+    const where: Prisma.ExchangeRequestWhereInput = {
+      isActive: true,
+      deletedAt: null,
+    };
+
+    // User filter
+    const userFilter = [{ fromUserId: userId }, { toUserId: userId }];
+
+    // Skill filter if provided
+    if (skillId) {
+      where.AND = [
+        {
+          OR: userFilter,
+        },
+        {
+          OR: [{ offeredSkillId: skillId }, { requestedSkillId: skillId }],
+        },
+      ];
+    } else {
+      where.OR = userFilter;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const exchangeRequests = await this.prisma.exchangeRequest.findMany({
+      where,
+      include: {
+        fromUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        toUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Get all skill IDs from the exchange requests
+    const skillIds = new Set<string>();
+    exchangeRequests.forEach((request) => {
+      skillIds.add(request.offeredSkillId);
+      skillIds.add(request.requestedSkillId);
+    });
+
+    // Fetch all skills in one query
+    const skills = await this.prisma.skill.findMany({
+      where: {
+        id: {
+          in: Array.from(skillIds),
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+      },
+    });
+
+    // Create a map for quick lookup
+    const skillMap = new Map(skills.map((skill) => [skill.id, skill]));
+
+    // Format the response to match the expected structure
+    return exchangeRequests.map((request) => ({
+      id: request.id,
+      status: request.status,
+      fromUserId: request.fromUserId,
+      toUserId: request.toUserId,
+      fromUserSkill: skillMap.get(request.offeredSkillId) || {
+        id: request.offeredSkillId,
+        title: 'Unknown Skill',
+      },
+      toUserSkill: skillMap.get(request.requestedSkillId) || {
+        id: request.requestedSkillId,
+        title: 'Unknown Skill',
+      },
+      offeredSkillId: request.offeredSkillId,
+      requestedSkillId: request.requestedSkillId,
+      createdAt: request.createdAt.toISOString(),
+    }));
   }
 
   async findById(id: string) {
@@ -146,9 +255,14 @@ export class ExchangesService {
     return updatedRequest;
   }
 
-  async completeExchange(id: string, rating: number, feedback: string | undefined, userId: string) {
+  async completeExchange(
+    id: string,
+    rating: number,
+    feedback: string | undefined,
+    userId: string,
+  ) {
     const exchangeRequest = await this.findById(id);
-    
+
     // Check if the exchange exists
     const exchange = await this.prisma.exchange.findUnique({
       where: { requestId: id },
