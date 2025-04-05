@@ -7,4 +7,4 @@ import { PrismaService } from 'src/prisma/prisma.service';
   controllers: [ExchangeRequestsController],
   providers: [ExchangesService, PrismaService],
 })
-export class ExchangesModule {}
+export class ExchangesRequestsModule {}

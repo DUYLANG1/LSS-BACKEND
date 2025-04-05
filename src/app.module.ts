@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { SkillsModule } from './modules/skills/skills.module';
-import { ExchangesModule } from './modules/exchanges/exchanges.module';
+import { ExchangesRequestsModule } from './modules/exchange-requests/exchange-requests.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,7 +17,7 @@ import { AppService } from './app.service';
     AuthModule,
     UsersModule,
     SkillsModule,
-    ExchangesModule,
+    ExchangesRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
