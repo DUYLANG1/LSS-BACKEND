@@ -1,25 +1,51 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { ConfigService } from './config/config.service';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
+  // CORS configuration
   app.enableCors({
-    origin: 'http://localhost:3000', // Your Next.js frontend URL
+    origin: configService.corsOrigin,
     credentials: true,
   });
 
+  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
       transformOptions: { enableImplicitConversion: true },
     }),
   );
 
-  // Add global prefix for all routes
-  // app.setGlobalPrefix('api/v1');
+  // Global API prefix
+  app.setGlobalPrefix('api/v1');
 
-  await app.listen(4000);
+  // Swagger documentation (requires @nestjs/swagger to be installed)
+  try {
+    const { SwaggerModule, DocumentBuilder } = require('@nestjs/swagger');
+    const config = new DocumentBuilder()
+      .setTitle('LSS API')
+      .setDescription('The LSS API documentation')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-docs', app, document);
+    logger.log(`Swagger documentation available at: http://localhost:${configService.port}/api-docs`);
+  } catch (error) {
+    logger.warn('Swagger module not available. Run "npm install --save @nestjs/swagger swagger-ui-express" to enable API documentation.');
+  }
+
+  // Start the server
+  const port = configService.port;
+  await app.listen(port);
+  logger.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();

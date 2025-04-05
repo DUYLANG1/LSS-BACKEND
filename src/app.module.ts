@@ -1,25 +1,30 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
-import { SkillsModule } from './modules/skills/skills.module';
-import { ExchangesRequestsModule } from './modules/exchange-requests/exchange-requests.module';
-import { CategoriesModule } from './modules/categories/categories.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from './config/config.module';
+import { CoreModule } from './core/core.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { HealthModule } from './health/health.module';
+
+// Domain modules
+import { AuthModule } from './domains/auth/auth.module';
+import { UsersModule } from './domains/users/users.module';
+import { SkillsModule } from './domains/skills/skills.module';
+import { ExchangeRequestsModule } from './domains/exchange-requests/exchange-requests.module';
+import { CategoriesModule } from './domains/categories/categories.module';
 
 @Module({
   imports: [
-    CategoriesModule,
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    // Core modules
+    ConfigModule,
+    CoreModule,
+    PrismaModule,
+    HealthModule,
+
+    // Domain modules
     AuthModule,
     UsersModule,
     SkillsModule,
-    ExchangesRequestsModule,
+    ExchangeRequestsModule,
+    CategoriesModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
