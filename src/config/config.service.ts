@@ -6,7 +6,11 @@ export class ConfigService {
   constructor(private configService: NestConfigService) {}
 
   get<T>(key: string): T {
-    return this.configService.get<T>(key);
+    const value = this.configService.get<T>(key);
+    if (value === undefined) {
+      throw new Error(`Configuration key "${key}" is undefined`);
+    }
+    return value;
   }
 
   get nodeEnv(): string {

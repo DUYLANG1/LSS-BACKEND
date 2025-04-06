@@ -3,7 +3,7 @@ import { Public } from '../core/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 // Conditionally import Swagger if available
-let ApiTags = () => {
+let ApiTags = (name: string) => {
   return (target: any) => {
     return target;
   };

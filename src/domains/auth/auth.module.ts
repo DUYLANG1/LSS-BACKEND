@@ -8,12 +8,14 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../users/users.module';
 import { ConfigModule } from '../../config/config.module';
 import { ConfigService } from '../../config/config.service';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     ConfigModule,
+    PrismaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

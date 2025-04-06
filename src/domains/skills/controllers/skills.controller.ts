@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { SkillsService } from '../services/skills.service';
 import { CreateSkillDto } from '../dto/create-skill.dto';
@@ -26,7 +27,10 @@ export class SkillsController {
    * @returns The created skill
    */
   @Post()
-  create(@Body() createSkillDto: CreateSkillDto, @Query('userId') userId: string) {
+  create(@Body() createSkillDto: CreateSkillDto, @Query('userId') userId?: string) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
     return this.skillsService.create(createSkillDto, userId);
   }
 
@@ -56,8 +60,11 @@ export class SkillsController {
   update(
     @Param('id') id: string,
     @Body() updateSkillDto: UpdateSkillDto,
-    @Query('userId') userId: string,
+    @Query('userId') userId?: string,
   ) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
     return this.skillsService.update(id, updateSkillDto, userId);
   }
 
@@ -66,7 +73,10 @@ export class SkillsController {
    * @returns The deleted skill
    */
   @Delete(':id')
-  remove(@Param('id') id: string, @Query('userId') userId: string) {
+  remove(@Param('id') id: string, @Query('userId') userId?: string) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
     return this.skillsService.remove(id, userId);
   }
 }

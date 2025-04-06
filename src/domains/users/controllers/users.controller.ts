@@ -24,7 +24,7 @@ export class UsersController {
    * @returns The user profile information
    */
   @Get('profile')
-  getProfile(@Query('userId') userId: string) {
+  getProfile(@Query('userId') userId?: string) {
     if (!userId) {
       throw new UnauthorizedException('User ID is required');
     }
@@ -38,7 +38,7 @@ export class UsersController {
   @Put('profile')
   updateProfile(
     @Body() updateProfileDto: UpdateProfileDto,
-    @Query('userId') userId: string,
+    @Query('userId') userId?: string,
   ) {
     if (!userId) {
       throw new UnauthorizedException('User ID is required');
@@ -51,7 +51,7 @@ export class UsersController {
    * @returns The skills of the specified user
    */
   @Get('skills')
-  getUserSkillsByQuery(@Query('userId') userId: string) {
+  getUserSkillsByQuery(@Query('userId') userId?: string) {
     if (!userId) {
       throw new UnauthorizedException('User ID is required');
     }

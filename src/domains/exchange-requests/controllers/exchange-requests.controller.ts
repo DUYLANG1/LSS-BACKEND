@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ExchangeRequestsService } from '../services/exchange-requests.service';
 import { CreateExchangeRequestDto } from '../dto/create-exchange-request.dto';
@@ -19,7 +20,9 @@ import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @Controller('exchange-requests')
 export class ExchangeRequestsController {
-  constructor(private readonly exchangeRequestsService: ExchangeRequestsService) {}
+  constructor(
+    private readonly exchangeRequestsService: ExchangeRequestsService,
+  ) {}
 
   /**
    * Create a new exchange request
@@ -28,9 +31,15 @@ export class ExchangeRequestsController {
   @Post()
   create(
     @Body() createExchangeRequestDto: CreateExchangeRequestDto,
-    @Query('userId') userId: string,
+    @Query('userId') userId?: string,
   ) {
-    return this.exchangeRequestsService.create(createExchangeRequestDto, userId);
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
+    return this.exchangeRequestsService.create(
+      createExchangeRequestDto,
+      userId,
+    );
   }
 
   /**
@@ -77,8 +86,11 @@ export class ExchangeRequestsController {
   updateStatus(
     @Param('id') id: string,
     @Body() updateExchangeRequestDto: UpdateExchangeRequestDto,
-    @Query('userId') userId: string,
+    @Query('userId') userId?: string,
   ) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
     return this.exchangeRequestsService.updateStatus(
       id,
       updateExchangeRequestDto,
@@ -91,7 +103,10 @@ export class ExchangeRequestsController {
    * @returns The deleted exchange request
    */
   @Delete(':id')
-  remove(@Param('id') id: string, @Query('userId') userId: string) {
+  remove(@Param('id') id: string, @Query('userId') userId?: string) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
     return this.exchangeRequestsService.remove(id, userId);
   }
 }
