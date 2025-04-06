@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoginDto } from '../dto/login.dto';
@@ -16,7 +20,7 @@ export class AuthService {
     const { email, password } = loginDto;
 
     const user = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email,
         isActive: true,
         deletedAt: null,
@@ -34,7 +38,7 @@ export class AuthService {
     }
 
     return {
-      token: this.jwtService.sign({ sub: user.id, email: user.email }),
+      token: this.jwtService.sign({ id: user.id, email: user.email }),
       user: {
         id: user.id,
         name: user.name,
@@ -80,7 +84,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string) {
     const user = await this.prisma.user.findUnique({
-      where: { 
+      where: {
         email,
         isActive: true,
         deletedAt: null,

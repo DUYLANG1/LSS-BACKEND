@@ -19,11 +19,11 @@ export class RegisterDto {
 
   /**
    * The password of the user
-   * @example password123
-   * @minLength 6
+   * @example 123
+   * @minLength 3
    */
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(3)
   password: string;
 }
