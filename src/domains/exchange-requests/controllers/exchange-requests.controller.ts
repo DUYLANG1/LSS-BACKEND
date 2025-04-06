@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ExchangeRequestsService } from '../services/exchange-requests.service';
 import { CreateExchangeRequestDto } from '../dto/create-exchange-request.dto';
@@ -52,6 +53,26 @@ export class ExchangeRequestsController {
   }
 
   /**
+   * Get the status of exchange requests for a specific skill
+   * @returns The status and related exchange requests for the specified skill
+   */
+  @Get('status')
+  async findBySkill(
+    @Query('skillId') skillId: string,
+    @Query('userId') userId?: string,
+  ) {
+    if (!skillId) {
+      throw new NotFoundException('Skill ID is required');
+    }
+
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
+
+    return this.exchangeRequestsService.findBySkill(skillId, userId);
+  }
+
+  /**
    * Get an exchange request by ID
    * @returns The exchange request with the specified ID
    */
@@ -76,6 +97,15 @@ export class ExchangeRequestsController {
   @Get('received/:userId')
   findReceivedByUser(@Param('userId') userId: string) {
     return this.exchangeRequestsService.findReceivedByUser(userId);
+  }
+
+  /**
+   * Get all exchange requests for a user (both sent and received)
+   * @returns All exchange requests for the specified user
+   */
+  @Get('user/:userId')
+  findByUser(@Param('userId') userId: string) {
+    return this.exchangeRequestsService.findByUser(userId);
   }
 
   /**
