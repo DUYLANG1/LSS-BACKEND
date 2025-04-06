@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString, IsInt } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateSkillDto {
   /**
@@ -19,9 +20,10 @@ export class CreateSkillDto {
 
   /**
    * The category ID of the skill
-   * @example 1
+   * @example "9"
    */
-  @IsInt()
+  @IsString()
   @IsNotEmpty()
-  categoryId: number;
+  @Transform(({ value }) => value.toString())
+  categoryId: string;
 }

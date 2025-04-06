@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateSkillDto } from '../dto/create-skill.dto';
 import { UpdateSkillDto } from '../dto/update-skill.dto';
@@ -7,25 +12,73 @@ import { UpdateSkillDto } from '../dto/update-skill.dto';
 export class SkillsService {
   constructor(private prisma: PrismaService) {}
 
+  async findUserByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: {
+        email,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+  }
+
   async create(createSkillDto: CreateSkillDto, userId: string) {
-    // Verify category exists
-    const category = await this.prisma.category.findUnique({
-      where: { id: createSkillDto.categoryId },
-    });
+    try {
+      // Verify category exists
+      const categoryId = parseInt(createSkillDto.categoryId, 10);
 
-    if (!category) {
-      throw new NotFoundException('Category not found');
+      if (isNaN(categoryId)) {
+        throw new BadRequestException(
+          `Invalid categoryId: ${createSkillDto.categoryId}. Must be a valid number.`,
+        );
+      }
+
+      const category = await this.prisma.category.findUnique({
+        where: { id: categoryId },
+      });
+
+      if (!category) {
+        throw new NotFoundException(`Category with ID ${categoryId} not found`);
+      }
+
+      // Check if userId is defined
+      if (!userId) {
+        throw new BadRequestException('User ID is required to create a skill');
+      }
+
+      return this.prisma.skill.create({
+        data: {
+          title: createSkillDto.title,
+          description: createSkillDto.description,
+          category: {
+            connect: { id: categoryId },
+          },
+          user: {
+            connect: { id: userId },
+          },
+        },
+        include: {
+          category: true,
+        },
+      });
+    } catch (error) {
+      // Re-throw Nest exceptions as is
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+
+      // For Prisma errors or other errors, provide more context
+      throw new BadRequestException(`Failed to create skill: ${error.message}`);
     }
-
-    return this.prisma.skill.create({
-      data: {
-        ...createSkillDto,
-        userId,
-      },
-      include: {
-        category: true,
-      },
-    });
   }
 
   async findAll() {
@@ -79,32 +132,63 @@ export class SkillsService {
   }
 
   async update(id: string, updateSkillDto: UpdateSkillDto, userId: string) {
-    // Check if skill exists
-    const skill = await this.findOne(id);
+    try {
+      // Check if skill exists
+      const skill = await this.findOne(id);
 
-    // Check if user owns the skill
-    if (skill.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to update this skill');
-    }
-
-    // If categoryId is provided, verify it exists
-    if (updateSkillDto.categoryId) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: updateSkillDto.categoryId },
-      });
-
-      if (!category) {
-        throw new NotFoundException('Category not found');
+      // Check if user owns the skill
+      if (skill.userId !== userId) {
+        throw new ForbiddenException(
+          'You do not have permission to update this skill',
+        );
       }
-    }
 
-    return this.prisma.skill.update({
-      where: { id },
-      data: updateSkillDto,
-      include: {
-        category: true,
-      },
-    });
+      // If categoryId is provided, verify it exists
+      let categoryId: number | undefined = undefined;
+      if (updateSkillDto.categoryId) {
+        categoryId = parseInt(updateSkillDto.categoryId, 10);
+
+        if (isNaN(categoryId)) {
+          throw new BadRequestException(
+            `Invalid categoryId: ${updateSkillDto.categoryId}. Must be a valid number.`,
+          );
+        }
+
+        const category = await this.prisma.category.findUnique({
+          where: { id: categoryId },
+        });
+
+        if (!category) {
+          throw new NotFoundException(
+            `Category with ID ${categoryId} not found`,
+          );
+        }
+      }
+
+      return this.prisma.skill.update({
+        where: { id },
+        data: {
+          title: updateSkillDto.title,
+          description: updateSkillDto.description,
+          categoryId: categoryId,
+        },
+        include: {
+          category: true,
+        },
+      });
+    } catch (error) {
+      // Re-throw Nest exceptions as is
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+
+      // For Prisma errors or other errors, provide more context
+      throw new BadRequestException(`Failed to update skill: ${error.message}`);
+    }
   }
 
   async remove(id: string, userId: string) {
@@ -113,7 +197,9 @@ export class SkillsService {
 
     // Check if user owns the skill
     if (skill.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to delete this skill');
+      throw new ForbiddenException(
+        'You do not have permission to delete this skill',
+      );
     }
 
     // Soft delete

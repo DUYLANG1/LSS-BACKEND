@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsInt } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class UpdateSkillDto {
   /**
@@ -19,9 +20,10 @@ export class UpdateSkillDto {
 
   /**
    * The category ID of the skill
-   * @example 1
+   * @example "9"
    */
-  @IsInt()
+  @IsString()
   @IsOptional()
-  categoryId?: number;
+  @Transform(({ value }) => (value ? value.toString() : undefined))
+  categoryId?: string;
 }
