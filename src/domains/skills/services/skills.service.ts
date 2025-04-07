@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateSkillDto } from '../dto/create-skill.dto';
 import { UpdateSkillDto } from '../dto/update-skill.dto';
+import { FindSkillsDto } from '../dto/find-skills.dto';
 
 @Injectable()
 export class SkillsService {
@@ -81,11 +82,125 @@ export class SkillsService {
     }
   }
 
-  async findAll() {
-    return this.prisma.skill.findMany({
+  async findAll(params: FindSkillsDto = {}, currentUserId?: string) {
+    const { page = 1, limit = 9, search = '' } = params;
+    const skip = (page - 1) * limit;
+
+    // Build the base where clause
+    const baseWhere = {
+      isActive: true,
+      deletedAt: null,
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search } },
+              { description: { contains: search } },
+            ],
+          }
+        : {}),
+    };
+
+    // If no currentUserId is provided, just return skills ordered by creation date
+    if (!currentUserId) {
+      // Get total count for pagination
+      const total = await this.prisma.skill.count({ where: baseWhere });
+
+      // Get paginated skills
+      const skills = await this.prisma.skill.findMany({
+        where: baseWhere,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      });
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(total / limit);
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
+
+      return {
+        data: skills,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage,
+          hasPreviousPage,
+        },
+      };
+    }
+
+    // If currentUserId is provided, we need to implement custom ordering
+    console.log('Current User ID:', currentUserId);
+
+    // First, find all exchange requests where the current user is involved
+    const userExchangeRequests = await this.prisma.exchangeRequest.findMany({
       where: {
+        OR: [{ fromUserId: currentUserId }, { toUserId: currentUserId }],
+        status: 'pending',
         isActive: true,
         deletedAt: null,
+      },
+    });
+
+    console.log('User exchange requests found:', userExchangeRequests.length);
+
+    // Get IDs of skills that the current user has requested from others
+    const requestedSkillIds = userExchangeRequests
+      .filter((req) => req.fromUserId === currentUserId)
+      .map((req) => req.requestedSkillId);
+
+    console.log('Skills requested by user:', requestedSkillIds.length);
+
+    // Get total count for pagination (this doesn't change)
+    const total = await this.prisma.skill.count({ where: baseWhere });
+
+    // We'll fetch skills in three separate queries and combine them
+
+    // 1. First, get skills that the current user has requested from others
+    const requestedSkills =
+      requestedSkillIds.length > 0
+        ? await this.prisma.skill.findMany({
+            where: {
+              id: { in: requestedSkillIds },
+              ...baseWhere,
+            },
+            include: {
+              category: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatar: true,
+                },
+              },
+            },
+          })
+        : [];
+
+    console.log('Requested skills found:', requestedSkills.length);
+
+    // 2. Next, get skills owned by the current user
+    const userOwnedSkills = await this.prisma.skill.findMany({
+      where: {
+        userId: currentUserId,
+        id: { notIn: requestedSkillIds }, // Exclude any that might be in the first group
+        ...baseWhere,
       },
       include: {
         category: true,
@@ -98,10 +213,91 @@ export class SkillsService {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
     });
+
+    console.log('User owned skills found:', userOwnedSkills.length);
+
+    // 3. Finally, get remaining skills
+    const remainingSkillsCount =
+      limit - requestedSkills.length - userOwnedSkills.length;
+    const remainingSkills =
+      remainingSkillsCount > 0
+        ? await this.prisma.skill.findMany({
+            where: {
+              userId: { not: currentUserId },
+              id: { notIn: requestedSkillIds }, // Exclude skills from first group
+              ...baseWhere,
+            },
+            include: {
+              category: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatar: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: remainingSkillsCount,
+            skip,
+          })
+        : [];
+
+    console.log('Remaining skills found:', remainingSkills.length);
+
+    // Combine all skills in the desired order
+    const combinedSkills = [
+      ...requestedSkills,
+      ...userOwnedSkills,
+      ...remainingSkills,
+    ];
+
+    // Add metadata to each skill
+    const skillsWithMetadata = combinedSkills.map((skill) => {
+      const isOwnedByCurrentUser = skill.userId === currentUserId;
+      const hasBeenRequestedByCurrentUser = requestedSkillIds.includes(
+        skill.id,
+      );
+
+      return {
+        ...skill,
+        isOwnedByCurrentUser,
+        hasBeenRequestedByCurrentUser,
+        hasBeenRequestedByOthers: false, // Not needed for ordering but keeping for consistency
+      };
+    });
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    // Log the final order for debugging
+    console.log(
+      'Final order - first few skills:',
+      skillsWithMetadata.slice(0, 3).map((s) => ({
+        id: s.id,
+        title: s.title,
+        isOwnedByCurrentUser: s.isOwnedByCurrentUser,
+        hasBeenRequestedByCurrentUser: s.hasBeenRequestedByCurrentUser,
+      })),
+    );
+
+    return {
+      data: skillsWithMetadata,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
+    };
   }
 
   async findOne(id: string) {
