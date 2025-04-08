@@ -18,4 +18,9 @@ export class FindSkillsDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  category?: number;
 }

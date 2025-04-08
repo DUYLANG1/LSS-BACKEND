@@ -83,7 +83,7 @@ export class SkillsService {
   }
 
   async findAll(params: FindSkillsDto = {}, currentUserId?: string) {
-    const { page = 1, limit = 9, search = '' } = params;
+    const { page = 1, limit = 9, search = '', category } = params;
     const skip = (page - 1) * limit;
 
     // Build the base where clause
@@ -98,6 +98,7 @@ export class SkillsService {
             ],
           }
         : {}),
+      ...(category ? { categoryId: category } : {}),
     };
 
     // If no currentUserId is provided, just return skills ordered by creation date
@@ -144,9 +145,6 @@ export class SkillsService {
       };
     }
 
-    // If currentUserId is provided, we need to implement custom ordering
-    console.log('Current User ID:', currentUserId);
-
     // First, find all exchange requests where the current user is the requester (fromUser)
     const userExchangeRequests = await this.prisma.exchangeRequest.findMany({
       where: {
@@ -166,14 +164,10 @@ export class SkillsService {
       },
     });
 
-    console.log('User exchange requests found:', userExchangeRequests.length);
-
     // Get IDs of skills that the current user has requested from others
     const requestedSkillIds = userExchangeRequests.map(
       (req) => req.requestedSkillId,
     );
-
-    console.log('Skills requested by user:', requestedSkillIds.length);
 
     // Get total count for pagination (this doesn't change)
     const total = await this.prisma.skill.count({ where: baseWhere });

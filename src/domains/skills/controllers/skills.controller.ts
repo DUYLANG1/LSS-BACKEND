@@ -82,12 +82,8 @@ export class SkillsController {
     @Query() findSkillsDto: FindSkillsDto,
     @Req() req: RequestWithUser,
   ) {
-    console.log('Request user in findAll:', req.user);
-    console.log('Query params:', findSkillsDto);
-
     // Try to get the user ID if the user is authenticated
     let currentUserId = req.user?.id || req.user?.sub;
-    console.log('Initial currentUserId from token:', currentUserId);
 
     // If we have an email but no ID, look up the user
     if (!currentUserId && req.user?.email) {
@@ -95,15 +91,11 @@ export class SkillsController {
         const user = await this.skillsService.findUserByEmail(req.user.email);
         if (user) {
           currentUserId = user.id;
-          console.log('Found currentUserId from email lookup:', currentUserId);
         }
       } catch (error) {
-        console.error('Error finding user by email:', error);
         // Continue without user ID if lookup fails
       }
     }
-
-    console.log('Final currentUserId being passed to service:', currentUserId);
 
     return this.skillsService.findAll(findSkillsDto, currentUserId);
   }
