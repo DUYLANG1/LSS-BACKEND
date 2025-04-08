@@ -101,51 +101,48 @@ export class SkillsService {
       ...(category ? { categoryId: category } : {}),
     };
 
-    // If no currentUserId is provided, just return skills ordered by creation date
-    if (!currentUserId) {
-      // Get total count for pagination
-      const total = await this.prisma.skill.count({ where: baseWhere });
+    // Standard include for skill queries
+    const includeOptions = {
+      category: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+        },
+      },
+    };
 
-      // Get paginated skills
+    // Get total count for pagination
+    const total = await this.prisma.skill.count({ where: baseWhere });
+
+    // Calculate pagination metadata
+    const paginationMeta = {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPreviousPage: page > 1,
+    };
+
+    // If no currentUserId is provided, return a simple paginated list
+    if (!currentUserId) {
       const skills = await this.prisma.skill.findMany({
         where: baseWhere,
-        include: {
-          category: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatar: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        include: includeOptions,
+        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       });
 
-      // Calculate pagination metadata
-      const totalPages = Math.ceil(total / limit);
-      const hasNextPage = page < totalPages;
-      const hasPreviousPage = page > 1;
-
-      return {
-        data: skills,
-        meta: {
-          total,
-          page,
-          limit,
-          totalPages,
-          hasNextPage,
-          hasPreviousPage,
-        },
-      };
+      return { data: skills, meta: paginationMeta };
     }
 
-    // First, find all exchange requests where the current user is the requester (fromUser)
+    // For authenticated users, we need to add metadata about ownership and requests
+
+    // First, get pending exchange requests made by the current user
     const userExchangeRequests = await this.prisma.exchangeRequest.findMany({
       where: {
         fromUserId: currentUserId,
@@ -153,135 +150,65 @@ export class SkillsService {
         isActive: true,
         deletedAt: null,
       },
-      include: {
-        toUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+      select: {
+        id: true,
+        requestedSkillId: true,
+        status: true,
       },
     });
 
-    // Get IDs of skills that the current user has requested from others
-    const requestedSkillIds = userExchangeRequests.map(
-      (req) => req.requestedSkillId,
+    // Create a map of requested skill IDs for quick lookup
+    const requestedSkillIds = new Set(
+      userExchangeRequests.map((req) => req.requestedSkillId),
     );
 
-    // Get total count for pagination (this doesn't change)
-    const total = await this.prisma.skill.count({ where: baseWhere });
-
-    // We'll fetch skills in three separate queries and combine them
-
-    // 1. First, get skills that the current user has requested from others
-    const requestedSkills =
-      requestedSkillIds.length > 0
-        ? await this.prisma.skill.findMany({
-            where: {
-              id: { in: requestedSkillIds },
-              ...baseWhere,
-            },
-            include: {
-              category: true,
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  avatar: true,
-                },
-              },
-            },
-          })
-        : [];
-
-    console.log('Requested skills found:', requestedSkills.length);
-
-    // 2. Next, get skills owned by the current user
-    const userOwnedSkills = await this.prisma.skill.findMany({
-      where: {
-        userId: currentUserId,
-        ...baseWhere,
-      },
-      include: {
-        category: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-      },
-    });
-
-    console.log('User owned skills found:', userOwnedSkills.length);
-
-    // 3. Finally, get remaining skills (excluding requested skills and user's own skills)
-    // Calculate how many more skills we need to fetch to reach the limit
-    const remainingSkillsCount = Math.max(
-      0,
-      limit - requestedSkills.length - userOwnedSkills.length,
-    );
-
-    // Get the IDs of all skills we've already fetched to exclude them
-    const alreadyFetchedSkillIds = [
-      ...requestedSkills.map((skill) => skill.id),
-      ...userOwnedSkills.map((skill) => skill.id),
-    ];
-
-    const remainingSkills =
-      remainingSkillsCount > 0
-        ? await this.prisma.skill.findMany({
-            where: {
-              id: { notIn: alreadyFetchedSkillIds },
-              userId: { not: currentUserId }, // Exclude user's own skills
-              ...baseWhere,
-            },
-            include: {
-              category: true,
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  avatar: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: remainingSkillsCount,
-            skip,
-          })
-        : [];
-
-    console.log('Remaining skills found:', remainingSkills.length);
-
-    // Create a map of exchange requests for quick lookup
+    // Create a map of exchange requests by skill ID
     const exchangeRequestMap = new Map();
     userExchangeRequests.forEach((req) => {
       exchangeRequestMap.set(req.requestedSkillId, req);
     });
 
-    // Combine all skills in the desired order
-    const combinedSkills = [
-      ...requestedSkills,
-      ...userOwnedSkills,
-      ...remainingSkills,
-    ];
+    // Get skills owned by the current user (for prioritization)
+    const userOwnedSkillsCount = await this.prisma.skill.count({
+      where: {
+        ...baseWhere,
+        userId: currentUserId,
+      },
+    });
+
+    // Get skills that have been requested by the current user
+    const requestedSkillsCount = requestedSkillIds.size;
+
+    // Calculate the total number of skills that will be prioritized
+    const prioritizedCount = userOwnedSkillsCount + requestedSkillsCount;
+
+    // Adjust pagination to account for prioritized skills
+    let adjustedSkip = skip;
+    let adjustedLimit = limit;
+
+    // If we're on the first page, we need to fetch enough skills to account for prioritized ones
+    if (page === 1) {
+      adjustedLimit = limit + prioritizedCount;
+      adjustedSkip = 0;
+    } else {
+      // For subsequent pages, adjust the skip to account for prioritized skills on first page
+      adjustedSkip = skip - prioritizedCount + limit;
+      if (adjustedSkip < 0) adjustedSkip = 0;
+    }
+
+    // Fetch paginated skills with the adjusted pagination
+    const skills = await this.prisma.skill.findMany({
+      where: baseWhere,
+      include: includeOptions,
+      orderBy: { createdAt: 'desc' },
+      skip: adjustedSkip,
+      take: adjustedLimit,
+    });
 
     // Add metadata to each skill
-    const skillsWithMetadata = combinedSkills.map((skill) => {
+    const skillsWithMetadata = skills.map((skill) => {
       const isOwnedByCurrentUser = skill.userId === currentUserId;
-      const hasBeenRequestedByCurrentUser = requestedSkillIds.includes(
-        skill.id,
-      );
-
-      // Get the exchange request for this skill if it exists
+      const hasBeenRequestedByCurrentUser = requestedSkillIds.has(skill.id);
       const exchangeRequest = exchangeRequestMap.get(skill.id);
 
       return {
@@ -294,36 +221,24 @@ export class SkillsService {
         exchangeRequestStatus: hasBeenRequestedByCurrentUser
           ? exchangeRequest?.status
           : null,
+        // Add a priority field for sorting
+        priority: hasBeenRequestedByCurrentUser
+          ? 1
+          : isOwnedByCurrentUser
+            ? 2
+            : 3,
       };
     });
 
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
+    // Sort skills by priority (1: requested, 2: owned, 3: others)
+    skillsWithMetadata.sort((a, b) => a.priority - b.priority);
 
-    // Log the final order for debugging
-    console.log(
-      'Final order - first few skills:',
-      skillsWithMetadata.slice(0, 3).map((s) => ({
-        id: s.id,
-        title: s.title,
-        isOwnedByCurrentUser: s.isOwnedByCurrentUser,
-        hasBeenRequestedByCurrentUser: s.hasBeenRequestedByCurrentUser,
-        exchangeRequestId: s.exchangeRequestId,
-      })),
-    );
+    // Apply final pagination to get exactly the requested number of skills
+    const paginatedSkills = skillsWithMetadata.slice(0, limit);
 
     return {
-      data: skillsWithMetadata,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      data: paginatedSkills,
+      meta: paginationMeta,
     };
   }
 
