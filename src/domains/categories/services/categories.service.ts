@@ -14,7 +14,7 @@ export class CategoriesService {
   }
 
   async findAll() {
-    return this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
       where: {
         isActive: true,
         deletedAt: null,
@@ -22,6 +22,27 @@ export class CategoriesService {
       orderBy: {
         name: 'asc',
       },
+      include: {
+        _count: {
+          select: {
+            skills: {
+              where: {
+                isActive: true,
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Transform the response to include skillsCount
+    return categories.map((category) => {
+      const { _count, ...categoryData } = category;
+      return {
+        ...categoryData,
+        skillsCount: _count.skills,
+      };
     });
   }
 

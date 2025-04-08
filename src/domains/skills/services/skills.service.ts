@@ -147,22 +147,31 @@ export class SkillsService {
     // If currentUserId is provided, we need to implement custom ordering
     console.log('Current User ID:', currentUserId);
 
-    // First, find all exchange requests where the current user is involved
+    // First, find all exchange requests where the current user is the requester (fromUser)
     const userExchangeRequests = await this.prisma.exchangeRequest.findMany({
       where: {
-        OR: [{ fromUserId: currentUserId }, { toUserId: currentUserId }],
+        fromUserId: currentUserId,
         status: 'pending',
         isActive: true,
         deletedAt: null,
+      },
+      include: {
+        toUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
     console.log('User exchange requests found:', userExchangeRequests.length);
 
     // Get IDs of skills that the current user has requested from others
-    const requestedSkillIds = userExchangeRequests
-      .filter((req) => req.fromUserId === currentUserId)
-      .map((req) => req.requestedSkillId);
+    const requestedSkillIds = userExchangeRequests.map(
+      (req) => req.requestedSkillId,
+    );
 
     console.log('Skills requested by user:', requestedSkillIds.length);
 
@@ -199,7 +208,6 @@ export class SkillsService {
     const userOwnedSkills = await this.prisma.skill.findMany({
       where: {
         userId: currentUserId,
-        id: { notIn: requestedSkillIds }, // Exclude any that might be in the first group
         ...baseWhere,
       },
       include: {
@@ -217,15 +225,25 @@ export class SkillsService {
 
     console.log('User owned skills found:', userOwnedSkills.length);
 
-    // 3. Finally, get remaining skills
-    const remainingSkillsCount =
-      limit - requestedSkills.length - userOwnedSkills.length;
+    // 3. Finally, get remaining skills (excluding requested skills and user's own skills)
+    // Calculate how many more skills we need to fetch to reach the limit
+    const remainingSkillsCount = Math.max(
+      0,
+      limit - requestedSkills.length - userOwnedSkills.length,
+    );
+
+    // Get the IDs of all skills we've already fetched to exclude them
+    const alreadyFetchedSkillIds = [
+      ...requestedSkills.map((skill) => skill.id),
+      ...userOwnedSkills.map((skill) => skill.id),
+    ];
+
     const remainingSkills =
       remainingSkillsCount > 0
         ? await this.prisma.skill.findMany({
             where: {
-              userId: { not: currentUserId },
-              id: { notIn: requestedSkillIds }, // Exclude skills from first group
+              id: { notIn: alreadyFetchedSkillIds },
+              userId: { not: currentUserId }, // Exclude user's own skills
               ...baseWhere,
             },
             include: {
@@ -249,6 +267,12 @@ export class SkillsService {
 
     console.log('Remaining skills found:', remainingSkills.length);
 
+    // Create a map of exchange requests for quick lookup
+    const exchangeRequestMap = new Map();
+    userExchangeRequests.forEach((req) => {
+      exchangeRequestMap.set(req.requestedSkillId, req);
+    });
+
     // Combine all skills in the desired order
     const combinedSkills = [
       ...requestedSkills,
@@ -263,11 +287,19 @@ export class SkillsService {
         skill.id,
       );
 
+      // Get the exchange request for this skill if it exists
+      const exchangeRequest = exchangeRequestMap.get(skill.id);
+
       return {
         ...skill,
         isOwnedByCurrentUser,
         hasBeenRequestedByCurrentUser,
-        hasBeenRequestedByOthers: false, // Not needed for ordering but keeping for consistency
+        exchangeRequestId: hasBeenRequestedByCurrentUser
+          ? exchangeRequest?.id
+          : null,
+        exchangeRequestStatus: hasBeenRequestedByCurrentUser
+          ? exchangeRequest?.status
+          : null,
       };
     });
 
@@ -284,6 +316,7 @@ export class SkillsService {
         title: s.title,
         isOwnedByCurrentUser: s.isOwnedByCurrentUser,
         hasBeenRequestedByCurrentUser: s.hasBeenRequestedByCurrentUser,
+        exchangeRequestId: s.exchangeRequestId,
       })),
     );
 
