@@ -380,6 +380,7 @@ export class ExchangeRequestsService {
             id: true,
             title: true,
             description: true,
+            category: true,
           },
         });
 
@@ -389,6 +390,7 @@ export class ExchangeRequestsService {
             id: true,
             title: true,
             description: true,
+            category: true,
           },
         });
 
