@@ -631,4 +631,101 @@ export class ExchangeRequestsService {
       userOwnsSkill: !!userOwnsSkill,
     };
   }
+
+  /**
+   * Get the status of all exchange requests for a user
+   * This method returns the status of all exchange requests involving the user
+   */
+  async getUserStatus(userId: string) {
+    // Find all exchange requests involving the user
+    const exchangeRequests = await this.prisma.exchangeRequest.findMany({
+      where: {
+        OR: [{ fromUserId: userId }, { toUserId: userId }],
+        isActive: true,
+        deletedAt: null,
+      },
+      include: {
+        fromUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        toUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (exchangeRequests.length === 0) {
+      return { status: 'available', requests: [] };
+    }
+
+    // Fetch skills separately and add flags for the current user
+    const requestsWithSkills = await Promise.all(
+      exchangeRequests.map(async (request) => {
+        const offeredSkill = await this.prisma.skill.findUnique({
+          where: { id: request.offeredSkillId },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+          },
+        });
+
+        const requestedSkill = await this.prisma.skill.findUnique({
+          where: { id: request.requestedSkillId },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+          },
+        });
+
+        return {
+          ...request,
+          offeredSkill,
+          requestedSkill,
+          // Add flags to indicate if the current user is the sender or receiver
+          isFromCurrentUser: request.fromUserId === userId,
+          isToCurrentUser: request.toUserId === userId,
+        };
+      }),
+    );
+
+    // Group requests by status
+    const pendingRequests = requestsWithSkills.filter(
+      (req) => req.status === 'pending',
+    );
+    const acceptedRequests = requestsWithSkills.filter(
+      (req) => req.status === 'accepted',
+    );
+    const rejectedRequests = requestsWithSkills.filter(
+      (req) => req.status === 'rejected',
+    );
+
+    return {
+      requests: requestsWithSkills,
+      pendingRequests,
+      acceptedRequests,
+      rejectedRequests,
+      // Summary counts
+      counts: {
+        total: requestsWithSkills.length,
+        pending: pendingRequests.length,
+        accepted: acceptedRequests.length,
+        rejected: rejectedRequests.length,
+      },
+    };
+  }
 }

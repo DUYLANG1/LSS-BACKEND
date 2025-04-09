@@ -53,23 +53,16 @@ export class ExchangeRequestsController {
   }
 
   /**
-   * Get the status of exchange requests for a specific skill
-   * @returns The status and related exchange requests for the specified skill
+   * Get the status of exchange requests for a user
+   * @returns The status and related exchange requests for the user
    */
   @Get('status')
-  async findBySkill(
-    @Query('skillId') skillId: string,
-    @Query('userId') userId?: string,
-  ) {
-    if (!skillId) {
-      throw new NotFoundException('Skill ID is required');
-    }
-
+  async getUserStatus(@Query('userId') userId?: string) {
     if (!userId) {
       throw new UnauthorizedException('User ID is required');
     }
 
-    return this.exchangeRequestsService.findBySkill(skillId, userId);
+    return this.exchangeRequestsService.getUserStatus(userId);
   }
 
   /**
