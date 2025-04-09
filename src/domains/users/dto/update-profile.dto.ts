@@ -24,7 +24,7 @@ export class UpdateProfileDto {
    */
   @IsString()
   @IsOptional()
-  avatar?: string;
+  avatarUrl?: string;
 
   /**
    * The bio of the user

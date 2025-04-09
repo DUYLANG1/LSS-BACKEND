@@ -20,7 +20,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   /**
-   * Get user profile
+   * Get user profile by query parameter
    * @returns The user profile information
    */
   @Get('profile')
@@ -32,13 +32,22 @@ export class UsersController {
   }
 
   /**
+   * Get user profile by path parameter
+   * @returns The user profile information
+   */
+  @Get('profile/:userId')
+  getProfileByParam(@Param('userId') userId: string) {
+    return this.usersService.findById(userId);
+  }
+
+  /**
    * Update user profile
    * @returns The updated user profile
    */
-  @Put('profile')
+  @Put('profile/:userId')
   updateProfile(
     @Body() updateProfileDto: UpdateProfileDto,
-    @Query('userId') userId?: string,
+    @Param('userId') userId?: string,
   ) {
     if (!userId) {
       throw new UnauthorizedException('User ID is required');

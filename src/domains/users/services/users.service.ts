@@ -32,7 +32,7 @@ export class UsersService {
       id: user.id,
       name: user.name,
       email: user.email,
-      avatar: user.avatar,
+      avatarUrl: user.avatarUrl,
       bio: user.bio,
       location: user.location,
       createdAt: user.createdAt,
@@ -43,19 +43,21 @@ export class UsersService {
     // Verify user exists
     await this.findById(id);
 
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id },
       data: updateProfileDto,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        bio: true,
-        location: true,
-        createdAt: true,
-      },
     });
+
+    // Return the same structure as findById for consistency
+    return {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      avatarUrl: updatedUser.avatarUrl,
+      bio: updatedUser.bio,
+      location: updatedUser.location,
+      createdAt: updatedUser.createdAt,
+    };
   }
 
   async getUserSkills(userId: string) {
@@ -83,7 +85,7 @@ export class UsersService {
         id: user.id,
         name: user.name,
         email: user.email,
-        avatar: user.avatar,
+        avatarUrl: user.avatarUrl,
       },
     }));
   }

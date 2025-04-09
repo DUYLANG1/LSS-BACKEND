@@ -21,7 +21,7 @@ export class User {
    * The avatar URL of the user
    * @example https://example.com/avatar.jpg
    */
-  avatar?: string;
+  avatarUrl?: string;
 
   /**
    * The bio of the user

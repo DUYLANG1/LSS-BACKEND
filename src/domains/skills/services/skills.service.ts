@@ -109,7 +109,7 @@ export class SkillsService {
           id: true,
           name: true,
           email: true,
-          avatar: true,
+          avatarUrl: true,
         },
       },
     };
@@ -256,7 +256,7 @@ export class SkillsService {
             id: true,
             name: true,
             email: true,
-            avatar: true,
+            avatarUrl: true,
           },
         },
       },

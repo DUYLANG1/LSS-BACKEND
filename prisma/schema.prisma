@@ -12,7 +12,7 @@ model User {
   email            String            @unique
   name             String
   password         String
-  avatar           String?           // Added field
+  avatarUrl        String?           // Added field
   bio              String?           // Added field
   location         String?           // Added field
   rating           Float?            // Added field
