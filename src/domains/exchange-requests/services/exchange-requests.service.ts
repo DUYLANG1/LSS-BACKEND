@@ -520,6 +520,16 @@ export class ExchangeRequestsService {
    * is either offered or requested, and returns the status of these requests
    */
   async findBySkill(skillId: string, userId: string) {
+    // First, check if the skill belongs to the current user
+    const userOwnsSkill = await this.prisma.skill.findFirst({
+      where: {
+        id: skillId,
+        userId: userId,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+
     // Find exchange requests where the skill is either offered or requested
     const exchangeRequests = await this.prisma.exchangeRequest.findMany({
       where: {
@@ -594,21 +604,31 @@ export class ExchangeRequestsService {
     // Determine overall status
     let status = 'available';
 
-    // If there are any accepted requests involving this skill, it's considered "exchanged"
+    // If there are any accepted requests involving this skill and the current user, it's considered "exchanged"
     const acceptedRequests = userRequests.filter(
       (req) => req.status === 'accepted',
     );
     if (acceptedRequests.length > 0) {
       status = 'exchanged';
     }
-    // If there are pending requests but no accepted ones, it's "pending"
+    // If there are pending requests involving this skill and the current user, it's "pending"
     else if (userRequests.some((req) => req.status === 'pending')) {
       status = 'pending';
+    }
+
+    // If the user owns this skill and there are no exchange requests involving them,
+    // but there are other exchange requests for this skill, mark it as "requested"
+    else if (userOwnsSkill && exchangeRequests.length > 0) {
+      status = 'requested';
     }
 
     return {
       status,
       requests: userRequests,
+      // Include all requests for admin/debugging purposes
+      allRequests: requestsWithSkills,
+      // Flag indicating if the current user owns this skill
+      userOwnsSkill: !!userOwnsSkill,
     };
   }
 }
