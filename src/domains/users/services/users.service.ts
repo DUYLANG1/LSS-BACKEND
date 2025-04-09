@@ -59,10 +59,10 @@ export class UsersService {
   }
 
   async getUserSkills(userId: string) {
-    // Verify user exists
-    await this.findById(userId);
+    // Verify user exists and get user info
+    const user = await this.findById(userId);
 
-    return this.prisma.skill.findMany({
+    const skills = await this.prisma.skill.findMany({
       where: {
         userId,
         isActive: true,
@@ -75,5 +75,16 @@ export class UsersService {
         createdAt: 'desc',
       },
     });
+
+    // Add user information to each skill
+    return skills.map((skill) => ({
+      ...skill,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    }));
   }
 }

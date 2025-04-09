@@ -100,17 +100,6 @@ export class SkillsController {
     return this.skillsService.findAll(findSkillsDto, currentUserId);
   }
 
-  /**
-   * Create a new skill for a specific user (direct user ID in path)
-   * @returns The created skill
-   */
-  @Post(':userId')
-  createForUserDirect(
-    @Body() createSkillDto: CreateSkillDto,
-    @Param('userId') userId: string,
-  ) {
-    return this.skillsService.create(createSkillDto, userId);
-  }
 
   /**
    * Get a skill by ID
